@@ -5,12 +5,19 @@ export interface Position {
 
 export enum PlantType {
   BasicShooter = 'basic_shooter',
-  WallNut = 'wall_nut',
+  DoubleShooter = 'double_shooter',
   Sunflower = 'sunflower',
+  WallNut = 'wall_nut',
+  FreezePlant = 'freeze_plant',
+  BombPlant = 'bomb_plant',
 }
 
 export enum EnemyType {
   Basic = 'basic',
+  Fast = 'fast',
+  Tank = 'tank',
+  Shield = 'shield',
+  Boss = 'boss',
 }
 
 export interface PlantData {
@@ -21,6 +28,8 @@ export interface PlantData {
   fireRate: number;
   color: string;
   symbol: string;
+  description: string;
+  special?: string;
 }
 
 export interface EnemyData {
@@ -30,11 +39,18 @@ export interface EnemyData {
   damage: number;
   color: string;
   symbol: string;
+  score: number;
 }
 
 export interface WaveData {
   enemies: { type: EnemyType; count: number; row: number }[];
   spawnInterval: number;
+}
+
+export interface LevelData {
+  name: string;
+  waves: WaveData[];
+  startEnergy: number;
 }
 
 export const PLANT_DATA: Record<PlantType, PlantData> = {
@@ -46,15 +62,18 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
     fireRate: 1,
     color: '#4CAF50',
     symbol: '🌿',
+    description: 'Basic shooter. Fires projectiles at enemies.',
   },
-  [PlantType.WallNut]: {
-    type: PlantType.WallNut,
-    cost: 50,
-    hp: 300,
-    damage: 0,
-    fireRate: 0,
-    color: '#8D6E63',
-    symbol: '🥜',
+  [PlantType.DoubleShooter]: {
+    type: PlantType.DoubleShooter,
+    cost: 200,
+    hp: 100,
+    damage: 25,
+    fireRate: 2,
+    color: '#2E7D32',
+    symbol: '🌲',
+    description: 'Double shooter. Fires twice as fast!',
+    special: 'Double fire rate',
   },
   [PlantType.Sunflower]: {
     type: PlantType.Sunflower,
@@ -64,6 +83,41 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
     fireRate: 0,
     color: '#FFD600',
     symbol: '🌻',
+    description: 'Produces 25 energy every 10 seconds.',
+    special: 'Energy producer',
+  },
+  [PlantType.WallNut]: {
+    type: PlantType.WallNut,
+    cost: 50,
+    hp: 300,
+    damage: 0,
+    fireRate: 0,
+    color: '#8D6E63',
+    symbol: '🥜',
+    description: 'High HP wall. Blocks enemies.',
+    special: 'Tank wall',
+  },
+  [PlantType.FreezePlant]: {
+    type: PlantType.FreezePlant,
+    cost: 175,
+    hp: 100,
+    damage: 20,
+    fireRate: 0.8,
+    color: '#29B6F6',
+    symbol: '❄️',
+    description: 'Slows enemies by 50% for 3 seconds.',
+    special: 'Slow effect',
+  },
+  [PlantType.BombPlant]: {
+    type: PlantType.BombPlant,
+    cost: 150,
+    hp: 100,
+    damage: 100,
+    fireRate: 0.5,
+    color: '#FF5722',
+    symbol: '💣',
+    description: 'Area damage. Hits all enemies in 3x3 area.',
+    special: 'AOE damage',
   },
 };
 
@@ -75,26 +129,90 @@ export const ENEMY_DATA: Record<EnemyType, EnemyData> = {
     damage: 10,
     color: '#F44336',
     symbol: '👾',
+    score: 10,
+  },
+  [EnemyType.Fast]: {
+    type: EnemyType.Fast,
+    hp: 60,
+    speed: 1.0,
+    damage: 8,
+    color: '#FF9800',
+    symbol: '⚡',
+    score: 15,
+  },
+  [EnemyType.Tank]: {
+    type: EnemyType.Tank,
+    hp: 300,
+    speed: 0.3,
+    damage: 20,
+    color: '#795548',
+    symbol: '🛡️',
+    score: 25,
+  },
+  [EnemyType.Shield]: {
+    type: EnemyType.Shield,
+    hp: 200,
+    speed: 0.4,
+    damage: 15,
+    color: '#607D8B',
+    symbol: '⛑️',
+    score: 20,
+  },
+  [EnemyType.Boss]: {
+    type: EnemyType.Boss,
+    hp: 800,
+    speed: 0.2,
+    damage: 30,
+    color: '#9C27B0',
+    symbol: '👹',
+    score: 100,
   },
 };
 
-export const WAVE_DATA: WaveData[] = [
+export const LEVELS: LevelData[] = [
   {
-    enemies: [
-      { type: EnemyType.Basic, count: 5, row: -1 },
+    name: 'Level 1 - The Beginning',
+    startEnergy: 50,
+    waves: [
+      { enemies: [{ type: EnemyType.Basic, count: 5, row: -1 }], spawnInterval: 2 },
+      { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }], spawnInterval: 1.5 },
+      { enemies: [{ type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 2, row: -1 }], spawnInterval: 1.2 },
     ],
-    spawnInterval: 2,
   },
   {
-    enemies: [
-      { type: EnemyType.Basic, count: 8, row: -1 },
+    name: 'Level 2 - Speed Challenge',
+    startEnergy: 75,
+    waves: [
+      { enemies: [{ type: EnemyType.Basic, count: 6, row: -1 }, { type: EnemyType.Fast, count: 3, row: -1 }], spawnInterval: 1.5 },
+      { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }], spawnInterval: 1 },
+      { enemies: [{ type: EnemyType.Basic, count: 5, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }], spawnInterval: 0.8 },
     ],
-    spawnInterval: 1.5,
   },
   {
-    enemies: [
-      { type: EnemyType.Basic, count: 12, row: -1 },
+    name: 'Level 3 - Heavy Armor',
+    startEnergy: 100,
+    waves: [
+      { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Tank, count: 2, row: -1 }], spawnInterval: 1.5 },
+      { enemies: [{ type: EnemyType.Tank, count: 4, row: -1 }, { type: EnemyType.Shield, count: 3, row: -1 }], spawnInterval: 1.2 },
+      { enemies: [{ type: EnemyType.Basic, count: 6, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Shield, count: 2, row: -1 }], spawnInterval: 1 },
     ],
-    spawnInterval: 1,
+  },
+  {
+    name: 'Level 4 - Mixed Assault',
+    startEnergy: 125,
+    waves: [
+      { enemies: [{ type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }], spawnInterval: 1 },
+      { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Shield, count: 2, row: -1 }], spawnInterval: 0.8 },
+      { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }, { type: EnemyType.Tank, count: 4, row: -1 }], spawnInterval: 0.7 },
+    ],
+  },
+  {
+    name: 'Level 5 - Boss Battle',
+    startEnergy: 150,
+    waves: [
+      { enemies: [{ type: EnemyType.Basic, count: 12, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }], spawnInterval: 0.8 },
+      { enemies: [{ type: EnemyType.Tank, count: 5, row: -1 }, { type: EnemyType.Shield, count: 4, row: -1 }], spawnInterval: 0.7 },
+      { enemies: [{ type: EnemyType.Boss, count: 1, row: -1 }, { type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }], spawnInterval: 0.5 },
+    ],
   },
 ];

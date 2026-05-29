@@ -10,6 +10,9 @@ export class Plant {
   fireCooldown: number = 0;
   color: string;
   symbol: string;
+  description: string;
+  special?: string;
+  sunTimer: number = 0;
 
   constructor(pos: Position, type: PlantType) {
     this.pos = pos;
@@ -21,9 +24,20 @@ export class Plant {
     this.fireRate = data.fireRate;
     this.color = data.color;
     this.symbol = data.symbol;
+    this.description = data.description;
+    this.special = data.special;
   }
 
   update(dt: number): boolean {
+    if (this.type === PlantType.Sunflower) {
+      this.sunTimer += dt;
+      if (this.sunTimer >= 10) {
+        this.sunTimer -= 10;
+        return true; // produce energy
+      }
+      return false;
+    }
+
     if (this.fireRate > 0) {
       this.fireCooldown -= dt;
       if (this.fireCooldown <= 0) {

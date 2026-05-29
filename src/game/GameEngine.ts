@@ -4,7 +4,7 @@ import { Enemy } from './Enemy';
 import { Projectile } from './Projectile';
 import { WaveManager } from './Wave';
 import { UI } from './UI';
-import { PlantType, WAVE_DATA } from './types';
+import { PlantType, LEVELS } from './types';
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -20,7 +20,8 @@ export class GameEngine {
   energy: number = 50;
   energyTimer: number = 0;
   selectedPlant: PlantType | null = null;
-  gameState: 'playing' | 'won' | 'lost' = 'playing';
+  gameState: 'playing' | 'won' | 'lost' | 'levelComplete' = 'playing';
+  score: number = 0;
 
   private lastTime: number = 0;
   private running: boolean = false;
@@ -30,7 +31,8 @@ export class GameEngine {
     this.ctx = canvas.getContext('2d')!;
     this.board = new Board(5, 9, 60, 0, 50);
     this.ui = new UI(canvas.width, canvas.height);
-    this.waveManager = new WaveManager(WAVE_DATA);
+    this.waveManager = new WaveManager(LEVELS);
+    this.energy = this.waveManager.getStartEnergy();
     this.setupEvents();
   }
 
@@ -42,7 +44,11 @@ export class GameEngine {
 
       if (this.gameState !== 'playing') {
         if (this.ui.isRestartClick(x, y, this.canvas.width, this.canvas.height)) {
-          this.restart();
+          if (this.gameState === 'levelComplete') {
+            this.nextLevel();
+          } else {
+            this.restart();
+          }
         }
         return;
       }
@@ -61,21 +67,29 @@ export class GameEngine {
       const existing = this.plants.find(p => p.pos.row === cell.row && p.pos.col === cell.col);
       if (existing) return;
 
-      const { cost } = this.getPlantCost(this.selectedPlant);
+      const cost = this.getPlantCost(this.selectedPlant);
       if (this.energy < cost) return;
 
       this.energy -= cost;
       this.plants.push(new Plant(cell, this.selectedPlant));
     });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.ui.setHover(e.clientX - rect.left, e.clientY - rect.top);
+    });
   }
 
-  private getPlantCost(type: PlantType): { cost: number } {
+  private getPlantCost(type: PlantType): number {
     const costs: Record<PlantType, number> = {
       [PlantType.BasicShooter]: 100,
-      [PlantType.WallNut]: 50,
+      [PlantType.DoubleShooter]: 200,
       [PlantType.Sunflower]: 50,
+      [PlantType.WallNut]: 50,
+      [PlantType.FreezePlant]: 175,
+      [PlantType.BombPlant]: 150,
     };
-    return { cost: costs[type] };
+    return costs[type];
   }
 
   start(): void {
@@ -104,13 +118,15 @@ export class GameEngine {
       this.energy = Math.min(999, this.energy + 1);
     }
 
-    // Sunflower energy
+    // Plant updates
     for (const plant of this.plants) {
-      if (plant.type === PlantType.Sunflower) {
-        plant.fireCooldown -= dt;
-        if (plant.fireCooldown <= 0) {
-          plant.fireCooldown = 10;
+      const shouldAct = plant.update(dt);
+      if (shouldAct) {
+        if (plant.type === PlantType.Sunflower) {
           this.energy = Math.min(999, this.energy + 25);
+        } else {
+          const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
+          this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, 300, plant.damage, plant.type));
         }
       }
     }
@@ -120,29 +136,16 @@ export class GameEngine {
     const newEnemy = this.waveManager.update(dt, startX);
     if (newEnemy) this.enemies.push(newEnemy);
 
-    // Update plants & shoot
-    for (const plant of this.plants) {
-      if (plant.type === PlantType.BasicShooter) {
-        const shouldShoot = plant.update(dt);
-        if (shouldShoot) {
-          const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
-          this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, 300, plant.damage));
-        }
-      }
-    }
-
     // Update enemies
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       enemy.update(dt, this.board.cellSize);
 
-      // Check if enemy reached left side
       if (enemy.x < this.board.offsetX) {
         this.gameState = 'lost';
         return;
       }
 
-      // Check collision with plants
       const enemyCol = enemy.getCol(this.board.cellSize);
       for (const plant of this.plants) {
         if (plant.pos.row === enemy.row && plant.pos.col === enemyCol) {
@@ -157,25 +160,37 @@ export class GameEngine {
       if (!proj.alive) continue;
       proj.update(dt);
 
-      // Check collision with enemies
       for (const enemy of this.enemies) {
         if (!enemy.alive || enemy.row !== proj.row) continue;
-        if (Math.abs(proj.x - enemy.x) < 20 && Math.abs(proj.y - (this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2)) < 20) {
+        const ey = this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2;
+        if (Math.abs(proj.x - enemy.x) < 20 && Math.abs(proj.y - ey) < 20) {
           enemy.takeDamage(proj.damage);
+          if (proj.plantType === PlantType.FreezePlant) {
+            enemy.applySlow(3);
+          }
           proj.alive = false;
           break;
         }
       }
     }
 
-    // Clean up dead
+    // Clean up
     this.enemies = this.enemies.filter(e => e.alive);
     this.projectiles = this.projectiles.filter(p => p.alive);
     this.plants = this.plants.filter(p => !p.isDead());
 
-    // Check win
-    if (this.waveManager.isDone() && this.enemies.length === 0) {
-      this.gameState = 'won';
+    // Check wave completion
+    if (this.waveManager.isWaveDone() && this.enemies.length === 0) {
+      this.waveManager.nextWave();
+    }
+
+    // Check level completion
+    if (this.waveManager.isLevelDone() && this.enemies.length === 0) {
+      if (this.waveManager.currentLevel >= LEVELS.length - 1) {
+        this.gameState = 'won';
+      } else {
+        this.gameState = 'levelComplete';
+      }
     }
   }
 
@@ -195,7 +210,6 @@ export class GameEngine {
       ctx.textAlign = 'center';
       ctx.fillText(plant.symbol, center.x, center.y + 8);
 
-      // HP bar
       const hpRatio = plant.hp / plant.maxHp;
       ctx.fillStyle = '#333';
       ctx.fillRect(center.x - 25, center.y - 30, 50, 4);
@@ -213,12 +227,16 @@ export class GameEngine {
       ctx.textAlign = 'center';
       ctx.fillText(enemy.symbol, enemy.x, ey + 6);
 
-      // HP bar
       const hpRatio = enemy.hp / enemy.maxHp;
       ctx.fillStyle = '#333';
       ctx.fillRect(enemy.x - 20, ey - 25, 40, 4);
       ctx.fillStyle = '#F44336';
       ctx.fillRect(enemy.x - 20, ey - 25, 40 * hpRatio, 4);
+
+      if (enemy.slowTimer > 0) {
+        ctx.fillStyle = 'rgba(41,182,246,0.3)';
+        ctx.fillRect(enemy.x - 22, ey - 22, 44, 44);
+      }
     }
 
     // Render projectiles
@@ -231,7 +249,17 @@ export class GameEngine {
     }
 
     // UI
-    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState);
+    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score);
+  }
+
+  nextLevel(): void {
+    this.plants = [];
+    this.enemies = [];
+    this.projectiles = [];
+    this.selectedPlant = null;
+    this.gameState = 'playing';
+    this.waveManager.loadLevel(this.waveManager.currentLevel + 1);
+    this.energy = this.waveManager.getStartEnergy();
   }
 
   restart(): void {
@@ -242,6 +270,8 @@ export class GameEngine {
     this.energyTimer = 0;
     this.selectedPlant = null;
     this.gameState = 'playing';
-    this.waveManager = new WaveManager(WAVE_DATA);
+    this.score = 0;
+    this.waveManager = new WaveManager(LEVELS);
+    this.energy = this.waveManager.getStartEnergy();
   }
 }
