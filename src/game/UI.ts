@@ -31,7 +31,7 @@ export class UI {
     });
   }
 
-  render(ctx: CanvasRenderingContext2D, energy: number, selected: PlantType | null, waveLabel: string, gameState: string, score: number): void {
+  render(ctx: CanvasRenderingContext2D, energy: number, selected: PlantType | null, waveLabel: string, gameState: string, score: number, muted: boolean = false): void {
     // Energy display
     ctx.fillStyle = '#FFD600';
     ctx.font = 'bold 20px Arial';
@@ -72,6 +72,11 @@ export class UI {
       ctx.fillStyle = energy >= data.cost ? '#FFD600' : '#999';
       ctx.fillText(`${data.cost}`, r.x + r.w / 2, r.y + 48);
     }
+
+    // Mute button
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(muted ? '🔇' : '🔊', ctx.canvas.width - 40, 25);
 
     // Tooltip on hover
     this.renderTooltip(ctx);
@@ -158,5 +163,11 @@ export class UI {
     const bx = canvasWidth / 2 - bw / 2;
     const by = canvasHeight / 2 + 30;
     return x >= bx && x <= bx + bw && y >= by && y <= by + bh;
+  }
+
+  isMuteClick(x: number, y: number, canvasWidth: number): boolean {
+    const mx = canvasWidth - 40;
+    const my = 15;
+    return x >= mx - 15 && x <= mx + 15 && y >= my - 15 && y <= my + 15;
   }
 }

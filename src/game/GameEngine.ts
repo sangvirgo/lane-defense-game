@@ -4,6 +4,8 @@ import { Enemy } from './Enemy';
 import { Projectile } from './Projectile';
 import { WaveManager } from './Wave';
 import { UI } from './UI';
+import { AudioManager } from './AudioManager';
+import { ParticleSystem } from './Particles';
 import { PlantType, LEVELS, PLANT_DATA } from './types';
 
 export class GameEngine {
@@ -12,6 +14,8 @@ export class GameEngine {
   board: Board;
   ui: UI;
   waveManager: WaveManager;
+  audio: AudioManager;
+  particles: ParticleSystem;
 
   plants: Plant[] = [];
   enemies: Enemy[] = [];
@@ -32,6 +36,8 @@ export class GameEngine {
     this.board = new Board(5, 9, 60, 0, 50);
     this.ui = new UI(canvas.width, canvas.height);
     this.waveManager = new WaveManager(LEVELS);
+    this.audio = new AudioManager();
+    this.particles = new ParticleSystem();
     this.energy = this.waveManager.getStartEnergy();
     this.setupEvents();
   }
@@ -41,6 +47,12 @@ export class GameEngine {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
+      // Mute toggle
+      if (this.ui.isMuteClick(x, y, this.canvas.width)) {
+        this.audio.toggleMute();
+        return;
+      }
 
       if (this.gameState !== 'playing') {
         if (this.ui.isRestartClick(x, y, this.canvas.width, this.canvas.height)) {
@@ -75,6 +87,9 @@ export class GameEngine {
 
       this.energy -= cost;
       this.plants.push(new Plant(cell, this.selectedPlant));
+      this.audio.playPlace();
+      const center = this.board.getCellCenter(cell.row, cell.col);
+      this.particles.emit(center.x, center.y, 5, '#8BC34A');
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
@@ -172,6 +187,7 @@ export class GameEngine {
         } else {
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
           this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, 300, plant.damage, plant.type));
+          this.audio.playShoot();
         }
       }
     }
@@ -188,6 +204,7 @@ export class GameEngine {
 
       if (enemy.x < this.board.offsetX) {
         this.gameState = 'lost';
+        this.audio.playLose();
         return;
       }
 
@@ -213,13 +230,22 @@ export class GameEngine {
           if (proj.plantType === PlantType.FreezePlant) {
             enemy.applySlow(3);
           }
+          this.audio.playHit();
+          this.particles.emit(proj.x, proj.y, 3, '#FFEB3B');
           proj.alive = false;
           break;
         }
       }
     }
 
-    // Clean up
+    // Clean up dead enemies with effects
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) {
+        this.audio.playEnemyDeath();
+        this.particles.emit(enemy.x, this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2, 8, enemy.color);
+        this.score += enemy.score;
+      }
+    }
     this.enemies = this.enemies.filter(e => e.alive);
     this.projectiles = this.projectiles.filter(p => p.alive);
     this.plants = this.plants.filter(p => !p.isDead());
@@ -229,12 +255,17 @@ export class GameEngine {
       this.waveManager.nextWave();
     }
 
+    // Update particles
+    this.particles.update(dt);
+
     // Check level completion
     if (this.waveManager.isLevelDone() && this.enemies.length === 0) {
       if (this.waveManager.currentLevel >= LEVELS.length - 1) {
         this.gameState = 'won';
+        this.audio.playWin();
       } else {
         this.gameState = 'levelComplete';
+        this.audio.playWin();
       }
     }
   }
@@ -293,8 +324,11 @@ export class GameEngine {
       ctx.fill();
     }
 
+    // Particles
+    this.particles.render(ctx);
+
     // UI
-    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score);
+    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score, this.audio.isMuted());
   }
 
   nextLevel(): void {

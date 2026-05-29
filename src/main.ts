@@ -10,4 +10,10 @@ canvas.style.cursor = 'pointer';
 document.body.appendChild(canvas);
 
 const engine = new GameEngine(canvas);
+
+// Init audio on first user interaction (autoplay policy)
+document.addEventListener('click', () => {
+  engine.audio.init();
+}, { once: true });
+
 engine.start();
