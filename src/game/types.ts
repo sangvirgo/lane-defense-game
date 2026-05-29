@@ -10,6 +10,8 @@ export enum PlantType {
   WallNut = 'wall_nut',
   FreezePlant = 'freeze_plant',
   BombPlant = 'bomb_plant',
+  IceShooter = 'ice_shooter',
+  ShieldWall = 'shield_wall',
 }
 
 export enum EnemyType {
@@ -118,6 +120,28 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
     symbol: '💣',
     description: 'Area damage. Hits all enemies in 3x3 area.',
     special: 'AOE damage',
+  },
+  [PlantType.IceShooter]: {
+    type: PlantType.IceShooter,
+    cost: 0,
+    hp: 120,
+    damage: 30,
+    fireRate: 1.2,
+    color: '#00BCD4',
+    symbol: '🧊',
+    description: 'Upgrade: Slows + shoots. Combine Shooter + Freeze.',
+    special: 'Slow + Shoot',
+  },
+  [PlantType.ShieldWall]: {
+    type: PlantType.ShieldWall,
+    cost: 0,
+    hp: 600,
+    damage: 0,
+    fireRate: 0,
+    color: '#78909C',
+    symbol: '🏰',
+    description: 'Upgrade: Double HP wall. Click WallNut to upgrade.',
+    special: '2x HP',
   },
 };
 

@@ -4,7 +4,7 @@ import { Enemy } from './Enemy';
 import { Projectile } from './Projectile';
 import { WaveManager } from './Wave';
 import { UI } from './UI';
-import { PlantType, LEVELS } from './types';
+import { PlantType, LEVELS, PLANT_DATA } from './types';
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -65,7 +65,10 @@ export class GameEngine {
       if (!cell) return;
 
       const existing = this.plants.find(p => p.pos.row === cell.row && p.pos.col === cell.col);
-      if (existing) return;
+      if (existing) {
+        this.tryUpgrade(existing);
+        return;
+      }
 
       const cost = this.getPlantCost(this.selectedPlant);
       if (this.energy < cost) return;
@@ -80,6 +83,46 @@ export class GameEngine {
     });
   }
 
+  private tryUpgrade(plant: Plant): void {
+    const upgradeCost = 100;
+    if (this.energy < upgradeCost) return;
+
+    if (plant.type === PlantType.BasicShooter) {
+      this.energy -= upgradeCost;
+      plant.type = PlantType.DoubleShooter;
+      const data = PLANT_DATA[PlantType.DoubleShooter];
+      plant.color = data.color;
+      plant.symbol = data.symbol;
+      plant.description = data.description;
+      plant.special = data.special;
+      plant.fireRate = data.fireRate;
+      plant.maxHp = data.hp;
+      plant.hp = Math.min(plant.hp + 50, plant.maxHp);
+    } else if (plant.type === PlantType.WallNut) {
+      this.energy -= upgradeCost;
+      plant.type = PlantType.ShieldWall;
+      const wd = PLANT_DATA[PlantType.ShieldWall];
+      plant.color = wd.color;
+      plant.symbol = wd.symbol;
+      plant.description = wd.description;
+      plant.special = wd.special;
+      plant.maxHp = wd.hp;
+      plant.hp = Math.min(plant.hp + 200, plant.maxHp);
+    } else if (plant.type === PlantType.FreezePlant) {
+      this.energy -= upgradeCost;
+      plant.type = PlantType.IceShooter;
+      const id = PLANT_DATA[PlantType.IceShooter];
+      plant.color = id.color;
+      plant.symbol = id.symbol;
+      plant.description = id.description;
+      plant.special = id.special;
+      plant.fireRate = id.fireRate;
+      plant.damage = id.damage;
+      plant.maxHp = id.hp;
+      plant.hp = Math.min(plant.hp + 50, plant.maxHp);
+    }
+  }
+
   private getPlantCost(type: PlantType): number {
     const costs: Record<PlantType, number> = {
       [PlantType.BasicShooter]: 100,
@@ -88,6 +131,8 @@ export class GameEngine {
       [PlantType.WallNut]: 50,
       [PlantType.FreezePlant]: 175,
       [PlantType.BombPlant]: 150,
+      [PlantType.IceShooter]: 0,
+      [PlantType.ShieldWall]: 0,
     };
     return costs[type];
   }
