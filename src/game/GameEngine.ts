@@ -10,6 +10,7 @@ import { FloatingText } from './FloatingText';
 import { Renderer } from './Renderer';
 import { SaveManager, SaveData } from './SaveManager';
 import { PlantType, LEVELS, PLANT_DATA } from './types';
+import * as C from './Constants';
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -44,7 +45,7 @@ export class GameEngine {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.showStartScreen = true;
-    this.board = new Board(5, 9, 60, 0, 50);
+    this.board = new Board(C.GRID_ROWS, C.GRID_COLS, C.CELL_SIZE, C.GRID_OFFSET_X, C.GRID_OFFSET_Y);
     this.ui = new UI(canvas.width, canvas.height);
     this.waveManager = new WaveManager(LEVELS);
     this.audio = new AudioManager();
@@ -164,7 +165,7 @@ export class GameEngine {
   }
 
   private tryUpgrade(plant: Plant): void {
-    const upgradeCost = 100;
+    const upgradeCost = C.UPGRADE_COST;
     if (this.energy < upgradeCost) return;
 
     if (plant.type === PlantType.BasicShooter) {
@@ -241,7 +242,7 @@ export class GameEngine {
     this.energyTimer += dt;
     if (this.energyTimer >= 1) {
       this.energyTimer -= 1;
-      this.energy = Math.min(999, this.energy + 1);
+      this.energy = Math.min(C.ENERGY_MAX, this.energy + C.ENERGY_REGEN_RATE);
     }
 
     // Plant updates
@@ -249,12 +250,12 @@ export class GameEngine {
       const shouldAct = plant.update(dt);
       if (shouldAct) {
         if (plant.type === PlantType.Sunflower) {
-          this.energy = Math.min(999, this.energy + 25);
+          this.energy = Math.min(C.ENERGY_MAX, this.energy + 25);
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
           this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '+25 ☀', '#FFD600'));
         } else {
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
-          this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, 300, plant.damage, plant.type));
+          this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, C.PROJECTILE_SPEED, plant.damage, plant.type));
           this.audio.playShoot();
           this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '💥', '#FFD600', 0.3));
         }
@@ -281,7 +282,7 @@ export class GameEngine {
       if (enemy.canHeal()) {
         for (const other of this.enemies) {
           if (other !== enemy && other.alive && other.row === enemy.row && Math.abs(other.x - enemy.x) < 100) {
-            other.hp = Math.min(other.maxHp, other.hp + 20);
+            other.hp = Math.min(other.maxHp, other.hp + C.HEAL_AMOUNT);
             enemy.doHeal();
             this.particles.emit(other.x, this.board.offsetY + other.row * this.board.cellSize + this.board.cellSize / 2, 5, '#00BCD4');
             break;
@@ -306,7 +307,7 @@ export class GameEngine {
       for (const enemy of this.enemies) {
         if (!enemy.alive || enemy.row !== proj.row) continue;
         const ey = this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2;
-        if (Math.abs(proj.x - enemy.x) < 20 && Math.abs(proj.y - ey) < 20) {
+        if (Math.abs(proj.x - enemy.x) < C.COLLISION_THRESHOLD && Math.abs(proj.y - ey) < C.COLLISION_THRESHOLD) {
           enemy.takeDamage(proj.damage);
           if (proj.plantType === PlantType.FreezePlant) {
             enemy.applySlow(3);
