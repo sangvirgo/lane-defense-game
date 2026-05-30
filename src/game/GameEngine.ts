@@ -273,6 +273,18 @@ export class GameEngine {
         return;
       }
 
+      // Healer heals nearby enemies
+      if (enemy.canHeal()) {
+        for (const other of this.enemies) {
+          if (other !== enemy && other.alive && other.row === enemy.row && Math.abs(other.x - enemy.x) < 100) {
+            other.hp = Math.min(other.maxHp, other.hp + 20);
+            enemy.doHeal();
+            this.particles.emit(other.x, this.board.offsetY + other.row * this.board.cellSize + this.board.cellSize / 2, 5, '#00BCD4');
+            break;
+          }
+        }
+      }
+
       const enemyCol = enemy.getCol(this.board.cellSize);
       for (const plant of this.plants) {
         if (plant.pos.row === enemy.row && plant.pos.col === enemyCol) {

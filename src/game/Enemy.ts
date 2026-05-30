@@ -16,6 +16,7 @@ export class Enemy {
   slowTimer: number = 0;
   hitFlash: number = 0;
   deathAnim: number = 0;
+  healCooldown: number = 0;
 
   constructor(row: number, startX: number, type: EnemyType) {
     this.row = row;
@@ -35,6 +36,7 @@ export class Enemy {
   update(dt: number, cellSize: number): void {
     if (this.hitFlash > 0) this.hitFlash -= dt;
     if (this.deathAnim > 0 && !this.alive) this.deathAnim -= dt;
+    if (this.healCooldown > 0) this.healCooldown -= dt;
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       this.speed = this.baseSpeed * 0.5;
@@ -42,6 +44,14 @@ export class Enemy {
       this.speed = this.baseSpeed;
     }
     this.x -= this.speed * cellSize * dt;
+  }
+
+  canHeal(): boolean {
+    return this.type === EnemyType.Healer && this.healCooldown <= 0;
+  }
+
+  doHeal(): void {
+    this.healCooldown = 3;
   }
 
   takeDamage(amount: number): void {

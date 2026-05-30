@@ -20,6 +20,8 @@ export enum EnemyType {
   Tank = 'tank',
   Shield = 'shield',
   Boss = 'boss',
+  Flying = 'flying',
+  Healer = 'healer',
 }
 
 export interface PlantData {
@@ -191,6 +193,24 @@ export const ENEMY_DATA: Record<EnemyType, EnemyData> = {
     symbol: '👹',
     score: 100,
   },
+  [EnemyType.Flying]: {
+    type: EnemyType.Flying,
+    hp: 80,
+    speed: 0.6,
+    damage: 12,
+    color: '#E91E63',
+    symbol: '🦇',
+    score: 20,
+  },
+  [EnemyType.Healer]: {
+    type: EnemyType.Healer,
+    hp: 150,
+    speed: 0.3,
+    damage: 8,
+    color: '#00BCD4',
+    symbol: '💚',
+    score: 30,
+  },
 };
 
 export const LEVELS: LevelData[] = [
@@ -217,26 +237,26 @@ export const LEVELS: LevelData[] = [
     startEnergy: 100,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Tank, count: 2, row: -1 }], spawnInterval: 1.5 },
-      { enemies: [{ type: EnemyType.Tank, count: 4, row: -1 }, { type: EnemyType.Shield, count: 3, row: -1 }], spawnInterval: 1.2 },
-      { enemies: [{ type: EnemyType.Basic, count: 6, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Shield, count: 2, row: -1 }], spawnInterval: 1 },
+      { enemies: [{ type: EnemyType.Tank, count: 4, row: -1 }, { type: EnemyType.Shield, count: 3, row: -1 }, { type: EnemyType.Flying, count: 2, row: -1 }], spawnInterval: 1.2 },
+      { enemies: [{ type: EnemyType.Basic, count: 6, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Flying, count: 3, row: -1 }], spawnInterval: 1 },
     ],
   },
   {
     name: 'Level 4 - Mixed Assault',
     startEnergy: 125,
     waves: [
-      { enemies: [{ type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }], spawnInterval: 1 },
-      { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Shield, count: 2, row: -1 }], spawnInterval: 0.8 },
-      { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }, { type: EnemyType.Tank, count: 4, row: -1 }], spawnInterval: 0.7 },
+      { enemies: [{ type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }, { type: EnemyType.Flying, count: 2, row: -1 }], spawnInterval: 1 },
+      { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Healer, count: 2, row: -1 }], spawnInterval: 0.8 },
+      { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }, { type: EnemyType.Healer, count: 3, row: -1 }, { type: EnemyType.Flying, count: 3, row: -1 }], spawnInterval: 0.7 },
     ],
   },
   {
     name: 'Level 5 - Boss Battle',
     startEnergy: 150,
     waves: [
-      { enemies: [{ type: EnemyType.Basic, count: 12, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }], spawnInterval: 0.8 },
-      { enemies: [{ type: EnemyType.Tank, count: 5, row: -1 }, { type: EnemyType.Shield, count: 4, row: -1 }], spawnInterval: 0.7 },
-      { enemies: [{ type: EnemyType.Boss, count: 1, row: -1 }, { type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }], spawnInterval: 0.5 },
+      { enemies: [{ type: EnemyType.Basic, count: 12, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }, { type: EnemyType.Flying, count: 4, row: -1 }], spawnInterval: 0.8 },
+      { enemies: [{ type: EnemyType.Tank, count: 5, row: -1 }, { type: EnemyType.Shield, count: 4, row: -1 }, { type: EnemyType.Healer, count: 3, row: -1 }], spawnInterval: 0.7 },
+      { enemies: [{ type: EnemyType.Boss, count: 1, row: -1 }, { type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Healer, count: 2, row: -1 }, { type: EnemyType.Flying, count: 5, row: -1 }], spawnInterval: 0.5 },
     ],
   },
 ];

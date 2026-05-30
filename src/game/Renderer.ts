@@ -264,6 +264,12 @@ export class Renderer {
       case EnemyType.Boss:
         Renderer.drawBossEnemy(ctx, x, y + wobble, size * 1.5, time);
         break;
+      case EnemyType.Flying:
+        Renderer.drawFlyingEnemy(ctx, x, y + wobble - 10, size, time);
+        break;
+      case EnemyType.Healer:
+        Renderer.drawHealerEnemy(ctx, x, y + wobble, size, time);
+        break;
     }
 
     // Slow effect overlay
@@ -395,6 +401,64 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(x - 4, y - 3, 1.5, 0, Math.PI * 2);
     ctx.arc(x + 4, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private static drawFlyingEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
+    // Body
+    ctx.fillStyle = '#E91E63';
+    ctx.beginPath();
+    ctx.ellipse(x, y, size * 0.8, size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Wings
+    const wingAngle = Math.sin(time * 8) * 0.5;
+    ctx.fillStyle = '#C2185B';
+    ctx.beginPath();
+    ctx.ellipse(x - size, y - 5, size * 0.7, size * 0.3, wingAngle, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + size, y - 5, size * 0.7, size * 0.3, -wingAngle, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 3, 3, 0, Math.PI * 2);
+    ctx.arc(x + 4, y - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + 4, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private static drawHealerEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
+    // Body
+    ctx.fillStyle = '#00BCD4';
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+    // Cross symbol
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 2, y - 8, 4, 16);
+    ctx.fillRect(x - 8, y - 2, 16, 4);
+    // Glow effect
+    const glow = 0.3 + Math.sin(time * 3) * 0.2;
+    ctx.strokeStyle = `rgba(0,188,212,${glow})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, size + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x - 5, y - 3, 3, 0, Math.PI * 2);
+    ctx.arc(x + 5, y - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(x - 5, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + 5, y - 3, 1.5, 0, Math.PI * 2);
     ctx.fill();
   }
 
