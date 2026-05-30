@@ -6,6 +6,8 @@ import { WaveManager } from './Wave';
 import { UI } from './UI';
 import { AudioManager } from './AudioManager';
 import { ParticleSystem } from './Particles';
+import { FloatingText } from './FloatingText';
+import { Renderer } from './Renderer';
 import { PlantType, LEVELS, PLANT_DATA } from './types';
 
 export class GameEngine {
@@ -16,6 +18,8 @@ export class GameEngine {
   waveManager: WaveManager;
   audio: AudioManager;
   particles: ParticleSystem;
+  floatingTexts: FloatingText[] = [];
+  time: number = 0;
 
   plants: Plant[] = [];
   enemies: Enemy[] = [];
@@ -38,6 +42,7 @@ export class GameEngine {
     this.waveManager = new WaveManager(LEVELS);
     this.audio = new AudioManager();
     this.particles = new ParticleSystem();
+    this.time = 0;
     this.energy = this.waveManager.getStartEnergy();
     this.setupEvents();
   }
@@ -169,6 +174,7 @@ export class GameEngine {
   };
 
   private update(dt: number): void {
+    this.time += dt;
     if (this.gameState !== 'playing') return;
 
     // Energy regen
@@ -184,10 +190,13 @@ export class GameEngine {
       if (shouldAct) {
         if (plant.type === PlantType.Sunflower) {
           this.energy = Math.min(999, this.energy + 25);
+          const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
+          this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '+25 ☀', '#FFD600'));
         } else {
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
           this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, 300, plant.damage, plant.type));
           this.audio.playShoot();
+          this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '💥', '#FFD600', 0.3));
         }
       }
     }
@@ -232,6 +241,7 @@ export class GameEngine {
           }
           this.audio.playHit();
           this.particles.emit(proj.x, proj.y, 3, '#FFEB3B');
+          this.floatingTexts.push(new FloatingText(proj.x, proj.y - 10, `-${proj.damage}`, '#F44336'));
           proj.alive = false;
           break;
         }
@@ -255,8 +265,10 @@ export class GameEngine {
       this.waveManager.nextWave();
     }
 
-    // Update particles
+    // Update particles & floating texts
     this.particles.update(dt);
+    for (const ft of this.floatingTexts) ft.update(dt);
+    this.floatingTexts = this.floatingTexts.filter(ft => !ft.isDead());
 
     // Check level completion
     if (this.waveManager.isLevelDone() && this.enemies.length === 0) {
@@ -275,53 +287,47 @@ export class GameEngine {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Background
+    Renderer.drawBackground(ctx, this.canvas.width, this.canvas.height, this.time);
+
     this.board.render(ctx);
 
     // Render plants
     for (const plant of this.plants) {
       const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
-      ctx.fillStyle = plant.color;
-      ctx.fillRect(center.x - 25, center.y - 25, 50, 50);
-      ctx.font = '24px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(plant.symbol, center.x, center.y + 8);
-
       const hpRatio = plant.hp / plant.maxHp;
+      Renderer.drawPlant(ctx, center.x, center.y, plant.type, this.time, hpRatio);
+
+      // HP bar
       ctx.fillStyle = '#333';
-      ctx.fillRect(center.x - 25, center.y - 30, 50, 4);
+      ctx.fillRect(center.x - 20, center.y - 30, 40, 4);
       ctx.fillStyle = hpRatio > 0.5 ? '#4CAF50' : hpRatio > 0.25 ? '#FF9800' : '#F44336';
-      ctx.fillRect(center.x - 25, center.y - 30, 50 * hpRatio, 4);
+      ctx.fillRect(center.x - 20, center.y - 30, 40 * hpRatio, 4);
     }
 
     // Render enemies
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       const ey = this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2;
-      ctx.fillStyle = enemy.color;
-      ctx.fillRect(enemy.x - 20, ey - 20, 40, 40);
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(enemy.symbol, enemy.x, ey + 6);
+      Renderer.drawEnemy(ctx, enemy.x, ey, enemy.type, this.time, enemy.slowTimer);
 
+      // HP bar
       const hpRatio = enemy.hp / enemy.maxHp;
       ctx.fillStyle = '#333';
-      ctx.fillRect(enemy.x - 20, ey - 25, 40, 4);
+      ctx.fillRect(enemy.x - 18, ey - 24, 36, 4);
       ctx.fillStyle = '#F44336';
-      ctx.fillRect(enemy.x - 20, ey - 25, 40 * hpRatio, 4);
-
-      if (enemy.slowTimer > 0) {
-        ctx.fillStyle = 'rgba(41,182,246,0.3)';
-        ctx.fillRect(enemy.x - 22, ey - 22, 44, 44);
-      }
+      ctx.fillRect(enemy.x - 18, ey - 24, 36 * hpRatio, 4);
     }
 
     // Render projectiles
     for (const proj of this.projectiles) {
       if (!proj.alive) continue;
-      ctx.fillStyle = '#FFEB3B';
-      ctx.beginPath();
-      ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+      Renderer.drawProjectile(ctx, proj.x, proj.y, proj.plantType, this.time);
+    }
+
+    // Floating texts
+    for (const ft of this.floatingTexts) {
+      ft.render(ctx);
     }
 
     // Particles
