@@ -1,8 +1,9 @@
 import { GameEngine } from './game/GameEngine';
+import * as C from './game/Constants';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
-canvas.width = 810;
-canvas.height = 370;
+canvas.width = C.CANVAS_WIDTH;
+canvas.height = C.CANVAS_HEIGHT;
 canvas.style.cursor = 'pointer';
 
 const engine = new GameEngine(canvas);

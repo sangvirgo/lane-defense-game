@@ -1,5 +1,6 @@
 import { EnemyType, LevelData } from './types';
 import { Enemy } from './Enemy';
+import * as C from './Constants';
 
 export class WaveManager {
   levels: LevelData[];
@@ -10,8 +11,9 @@ export class WaveManager {
   spawnInterval: number = 0;
   allSpawned: boolean = false;
   levelComplete: boolean = false;
-  initialDelay: number = 5;
+  delayTimer: number = 0;
   started: boolean = false;
+  waveStartTriggered: boolean = false;
 
   constructor(levels: LevelData[]) {
     this.levels = levels;
@@ -28,6 +30,8 @@ export class WaveManager {
     this.currentWave = 0;
     this.levelComplete = false;
     this.allSpawned = false;
+    this.started = false;
+    this.waveStartTriggered = false;
     this.loadWave(0);
   }
 
@@ -41,8 +45,12 @@ export class WaveManager {
     const wave = level.waves[index];
     this.spawnInterval = wave.spawnInterval;
     this.spawnTimer = 0;
-    this.started = index > 0;
-    this.initialDelay = index === 0 ? 5 : 0;
+    this.started = false;
+    this.waveStartTriggered = false;
+
+    // Initial delay: 8s for wave 1, 3s for subsequent waves
+    this.delayTimer = index === 0 ? C.INITIAL_WAVE_DELAY : C.BETWEEN_WAVE_DELAY;
+
     this.spawnQueue = [];
     for (const group of wave.enemies) {
       for (let i = 0; i < group.count; i++) {
@@ -59,13 +67,16 @@ export class WaveManager {
 
   update(dt: number, startX: number): Enemy | null {
     if (this.allSpawned || this.spawnQueue.length === 0) return null;
+
     if (!this.started) {
-      this.initialDelay -= dt;
-      if (this.initialDelay <= 0) {
+      this.delayTimer -= dt;
+      if (this.delayTimer <= 0) {
         this.started = true;
+        this.waveStartTriggered = true;
       }
       return null;
     }
+
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = this.spawnInterval;
@@ -73,6 +84,15 @@ export class WaveManager {
       return new Enemy(next.row, startX, next.type);
     }
     return null;
+  }
+
+  /** Returns true exactly once when the delay finishes and wave starts */
+  consumeWaveStart(): boolean {
+    if (this.waveStartTriggered) {
+      this.waveStartTriggered = false;
+      return true;
+    }
+    return false;
   }
 
   nextWave(): void {
@@ -102,5 +122,13 @@ export class WaveManager {
 
   getStartEnergy(): number {
     return this.levels[this.currentLevel].startEnergy;
+  }
+
+  getDelayRemaining(): number {
+    return Math.max(0, this.delayTimer);
+  }
+
+  isInDelay(): boolean {
+    return !this.started && !this.allSpawned;
   }
 }

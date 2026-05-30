@@ -2,8 +2,13 @@ export class AudioManager {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
   private volume: number = 0.3;
+  private musicGain: GainNode | null = null;
+  private musicOscs: OscillatorNode[] = [];
+  private musicInterval: ReturnType<typeof setInterval> | null = null;
+  private musicPlaying: boolean = false;
 
   init(): void {
+    if (this.ctx) return;
     this.ctx = new AudioContext();
   }
 
@@ -14,50 +19,96 @@ export class AudioManager {
 
   toggleMute(): void {
     this.muted = !this.muted;
-    if (this.muted && this.musicSource) {
-      this.musicSource.stop();
-      this.musicSource = null;
-    } else if (!this.muted) {
+    if (this.muted) {
+      this.stopMusic();
+    } else {
       this.startMusic();
     }
   }
 
-  private musicSource: OscillatorNode | null = null;
-  private musicGain: GainNode | null = null;
+  private stopMusic(): void {
+    if (this.musicGain) {
+      try {
+        this.musicGain.gain.setValueAtTime(0, this.ctx!.currentTime);
+      } catch (_e) { /* ignore */ }
+    }
+    for (const osc of this.musicOscs) {
+      try { osc.stop(); } catch (_e) { /* ignore */ }
+    }
+    this.musicOscs = [];
+    if (this.musicInterval) {
+      clearInterval(this.musicInterval);
+      this.musicInterval = null;
+    }
+    this.musicPlaying = false;
+    this.musicGain = null;
+  }
 
   startMusic(): void {
-    if (this.muted) return;
+    if (this.muted || this.musicPlaying) return;
     try {
       const ctx = this.ensureCtx();
-      if (this.musicSource) return;
+      if (ctx.state === 'suspended') ctx.resume();
 
-      // Simple ambient music loop using oscillators
-      const now = ctx.currentTime;
-      const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
       gain.connect(ctx.destination);
       this.musicGain = gain;
 
-      // Pad chord
-      const oscs: OscillatorNode[] = [];
-      for (const freq of notes) {
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        osc.connect(gain);
-        osc.start(now);
-        oscs.push(osc);
-      }
-      this.musicSource = oscs[0];
+      // Fun PvZ-style melody loop
+      const melody = [
+        // C major arpeggio pattern
+        { notes: [261.63, 329.63, 392.00], dur: 0.4 },
+        { notes: [349.23, 440.00, 523.25], dur: 0.4 },
+        { notes: [392.00, 493.88, 587.33], dur: 0.4 },
+        { notes: [329.63, 415.30, 523.25], dur: 0.4 },
+        { notes: [293.66, 369.99, 440.00], dur: 0.4 },
+        { notes: [349.23, 440.00, 523.25], dur: 0.4 },
+        { notes: [392.00, 493.88, 587.33], dur: 0.4 },
+        { notes: [523.25, 659.25, 783.99], dur: 0.6 },
+      ];
 
-      // Slowly modulate volume
-      const modulate = () => {
-        if (!this.musicGain || this.muted) return;
-        const t = ctx.currentTime;
-        this.musicGain.gain.setValueAtTime(0.03 + Math.sin(t * 0.5) * 0.02, t);
+      let step = 0;
+      const playStep = () => {
+        if (this.muted || !this.musicGain) return;
+        const currentCtx = this.ensureCtx();
+        const now = currentCtx.currentTime;
+        const { notes, dur } = melody[step % melody.length];
+
+        for (const freq of notes) {
+          const osc = currentCtx.createOscillator();
+          const noteGain = currentCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          noteGain.gain.setValueAtTime(0.03, now);
+          noteGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+          osc.connect(noteGain);
+          noteGain.connect(this.musicGain!);
+          osc.start(now);
+          osc.stop(now + dur);
+        }
+
+        // Bass note every 2 steps
+        if (step % 2 === 0) {
+          const bassFreq = notes[0] / 2;
+          const bassOsc = currentCtx.createOscillator();
+          const bassGain = currentCtx.createGain();
+          bassOsc.type = 'triangle';
+          bassOsc.frequency.setValueAtTime(bassFreq, now);
+          bassGain.gain.setValueAtTime(0.05, now);
+          bassGain.gain.exponentialRampToValueAtTime(0.001, now + dur * 2);
+          bassOsc.connect(bassGain);
+          bassGain.connect(this.musicGain!);
+          bassOsc.start(now);
+          bassOsc.stop(now + dur * 2);
+        }
+
+        step++;
       };
-      setInterval(modulate, 500);
+
+      playStep();
+      this.musicInterval = setInterval(playStep, 400);
+      this.musicPlaying = true;
     } catch (_e) {
       // ignore
     }
@@ -67,10 +118,20 @@ export class AudioManager {
     return this.muted;
   }
 
+  playReady(): void {
+    if (this.muted) return;
+    // Ascending fanfare
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((freq, i) => {
+      setTimeout(() => this.playTone(freq, 0.25, 'sine'), i * 200);
+    });
+  }
+
   playPlace(): void {
     if (this.muted) return;
     this.playTone(440, 0.1, 'sine');
     setTimeout(() => this.playTone(550, 0.1, 'sine'), 50);
+    setTimeout(() => this.playTone(660, 0.08, 'sine'), 100);
   }
 
   playShoot(): void {
@@ -91,15 +152,15 @@ export class AudioManager {
 
   playWin(): void {
     if (this.muted) return;
-    const notes = [523, 659, 784, 1047];
+    const notes = [523, 659, 784, 1047, 1319];
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.2, 'sine'), i * 150);
+      setTimeout(() => this.playTone(freq, 0.25, 'sine'), i * 150);
     });
   }
 
   playLose(): void {
     if (this.muted) return;
-    const notes = [400, 350, 300, 250];
+    const notes = [400, 350, 300, 250, 200];
     notes.forEach((freq, i) => {
       setTimeout(() => this.playTone(freq, 0.3, 'sawtooth'), i * 200);
     });
@@ -107,8 +168,14 @@ export class AudioManager {
 
   playWaveStart(): void {
     if (this.muted) return;
-    this.playTone(600, 0.1, 'sine');
-    setTimeout(() => this.playTone(800, 0.15, 'sine'), 100);
+    this.playTone(600, 0.15, 'sine');
+    setTimeout(() => this.playTone(800, 0.2, 'sine'), 100);
+    setTimeout(() => this.playTone(1000, 0.15, 'sine'), 200);
+  }
+
+  playCountdownTick(): void {
+    if (this.muted) return;
+    this.playTone(660, 0.08, 'sine');
   }
 
   private playTone(freq: number, duration: number, type: OscillatorType): void {

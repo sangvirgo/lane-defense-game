@@ -41,6 +41,7 @@ export class GameEngine {
   private shovelActive: boolean = false;
   private showStartScreen: boolean = true;
   private showLevelSelect: boolean = false;
+  private lastCountdownSecond: number = -1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -132,8 +133,10 @@ export class GameEngine {
 
       const card = this.ui.getClickedCard(x, y);
       if (card !== null) {
-        this.selectedPlant = card;
-        this.shovelActive = false;
+        if (!this.ui.isOnCooldown(card)) {
+          this.selectedPlant = card;
+          this.shovelActive = false;
+        }
         return;
       }
 
@@ -163,12 +166,15 @@ export class GameEngine {
 
       const cost = this.getPlantCost(this.selectedPlant);
       if (this.energy < cost) return;
+      if (this.ui.isOnCooldown(this.selectedPlant)) return;
 
       this.energy -= cost;
       this.plants.push(new Plant(cell, this.selectedPlant));
       this.audio.playPlace();
+      this.ui.setCooldown(this.selectedPlant, C.PLANT_CARD_COOLDOWN);
+      this.selectedPlant = null;
       const center = this.board.getCellCenter(cell.row, cell.col);
-      this.particles.emit(center.x, center.y, 5, '#8BC34A');
+      this.particles.emit(center.x, center.y, 8, '#8BC34A');
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
@@ -250,6 +256,24 @@ export class GameEngine {
   private update(dt: number): void {
     this.time += dt;
     if (this.showStartScreen || this.paused || this.gameState !== 'playing') return;
+
+    // UI cooldowns
+    this.ui.updateCooldowns(dt);
+
+    // Countdown tick sound
+    if (this.waveManager.isInDelay()) {
+      const sec = Math.ceil(this.waveManager.getDelayRemaining());
+      if (sec !== this.lastCountdownSecond && sec > 0 && sec <= 8) {
+        this.lastCountdownSecond = sec;
+        this.audio.playCountdownTick();
+      }
+    }
+
+    // Check if wave just started
+    if (this.waveManager.consumeWaveStart()) {
+      this.audio.playWaveStart();
+      this.lastCountdownSecond = -1;
+    }
 
     // Energy regen
     this.energyTimer += dt;
@@ -338,7 +362,7 @@ export class GameEngine {
     for (const enemy of this.enemies) {
       if (!enemy.alive) {
         this.audio.playEnemyDeath();
-        this.particles.emit(enemy.x, this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2, 8, enemy.color);
+        this.particles.emit(enemy.x, this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2, 10, enemy.color);
         this.score += enemy.score;
       }
     }
@@ -380,7 +404,7 @@ export class GameEngine {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Background
+    // Background (sky, clouds, grass, fence)
     Renderer.drawBackground(ctx, this.canvas.width, this.canvas.height, this.time);
 
     this.board.render(ctx);
@@ -393,9 +417,13 @@ export class GameEngine {
 
       // HP bar
       ctx.fillStyle = '#333';
-      ctx.fillRect(center.x - 20, center.y - 30, 40, 4);
+      ctx.fillRect(center.x - 22, center.y - 32, 44, 5);
       ctx.fillStyle = hpRatio > 0.5 ? '#4CAF50' : hpRatio > 0.25 ? '#FF9800' : '#F44336';
-      ctx.fillRect(center.x - 20, center.y - 30, 40 * hpRatio, 4);
+      ctx.fillRect(center.x - 22, center.y - 32, 44 * hpRatio, 5);
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(center.x - 22, center.y - 32, 44, 5);
+      ctx.lineWidth = 1;
     }
 
     // Render enemies
@@ -407,9 +435,13 @@ export class GameEngine {
       // HP bar
       const hpRatio = enemy.hp / enemy.maxHp;
       ctx.fillStyle = '#333';
-      ctx.fillRect(enemy.x - 18, ey - 24, 36, 4);
+      ctx.fillRect(enemy.x - 20, ey - 28, 40, 5);
       ctx.fillStyle = '#F44336';
-      ctx.fillRect(enemy.x - 18, ey - 24, 36 * hpRatio, 4);
+      ctx.fillRect(enemy.x - 20, ey - 28, 40 * hpRatio, 5);
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(enemy.x - 20, ey - 28, 40, 5);
+      ctx.lineWidth = 1;
     }
 
     // Render projectiles
@@ -426,18 +458,89 @@ export class GameEngine {
     // Particles
     this.particles.render(ctx);
 
-    // Ready message during initial delay
-    if (!this.waveManager.started && this.gameState === 'playing') {
-      const remaining = Math.ceil(this.waveManager.initialDelay);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(this.canvas.width / 2 - 100, this.canvas.height / 2 - 40, 200, 80);
+    // Countdown overlay during delay
+    if (this.waveManager.isInDelay() && this.gameState === 'playing') {
+      const remaining = this.waveManager.getDelayRemaining();
+      const sec = Math.ceil(remaining);
+      const isFirstWave = this.waveManager.currentWave === 0;
+
+      // Dim overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+      // Countdown box
+      const boxW = 280, boxH = 120;
+      const boxX = this.canvas.width / 2 - boxW / 2;
+      const boxY = this.canvas.height / 2 - boxH / 2;
+
+      // Box shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(boxX + 12, boxY + 4);
+      ctx.lineTo(boxX + boxW + 12, boxY + 4);
+      ctx.quadraticCurveTo(boxX + boxW + 12, boxY + 4, boxX + boxW + 12, boxY + 12);
+      ctx.lineTo(boxX + boxW + 12, boxY + boxH + 4);
+      ctx.quadraticCurveTo(boxX + boxW + 12, boxY + boxH + 4, boxX + boxW + 4, boxY + boxH + 4);
+      ctx.lineTo(boxX + 12, boxY + boxH + 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Box background
+      ctx.fillStyle = 'rgba(20,20,40,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(boxX + 12, boxY);
+      ctx.lineTo(boxX + boxW - 12, boxY);
+      ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + 12);
+      ctx.lineTo(boxX + boxW, boxY + boxH - 12);
+      ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - 12, boxY + boxH);
+      ctx.lineTo(boxX + 12, boxY + boxH);
+      ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - 12);
+      ctx.lineTo(boxX, boxY + 12);
+      ctx.quadraticCurveTo(boxX, boxY, boxX + 12, boxY);
+      ctx.closePath();
+      ctx.fill();
+      // Gold border
+      ctx.strokeStyle = '#FFB300';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.lineWidth = 1;
+
+      // "GET READY!" text
       ctx.fillStyle = '#FFD700';
       ctx.font = 'bold 28px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('GET READY!', this.canvas.width / 2, this.canvas.height / 2 - 5);
+      ctx.textBaseline = 'middle';
+      if (isFirstWave) {
+        ctx.fillText('GET READY!', this.canvas.width / 2, boxY + 35);
+      } else {
+        ctx.fillStyle = '#FF9800';
+        ctx.fillText(`WAVE ${this.waveManager.currentWave + 1}`, this.canvas.width / 2, boxY + 35);
+      }
+
+      // Big countdown number
+      const pulseScale = 1 + Math.sin(remaining * Math.PI * 2) * 0.08;
+      ctx.save();
+      ctx.translate(this.canvas.width / 2, boxY + 80);
+      ctx.scale(pulseScale, pulseScale);
       ctx.fillStyle = '#fff';
-      ctx.font = '18px Arial';
-      ctx.fillText(`${remaining}s`, this.canvas.width / 2, this.canvas.height / 2 + 25);
+      ctx.font = 'bold 40px Arial';
+      ctx.fillText(`${sec}`, 0, 0);
+      ctx.restore();
+
+      // Progress bar
+      const barW = boxW - 40;
+      const barH = 6;
+      const barX = boxX + 20;
+      const barY = boxY + boxH - 18;
+      const progress = isFirstWave
+        ? 1 - (remaining / C.INITIAL_WAVE_DELAY)
+        : 1 - (remaining / C.BETWEEN_WAVE_DELAY);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#FFB300';
+      ctx.fillRect(barX, barY, barW * progress, barH);
+
+      ctx.textBaseline = 'alphabetic';
     }
 
     // UI
@@ -447,19 +550,22 @@ export class GameEngine {
     if (this.showStartScreen) {
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      // Title
       ctx.fillStyle = '#4CAF50';
-      ctx.font = 'bold 48px Arial';
+      ctx.font = 'bold 52px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('🌿 LANE DEFENSE 🌿', this.canvas.width / 2, this.canvas.height / 2 - 60);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🌿 LANE DEFENSE 🌿', this.canvas.width / 2, this.canvas.height / 2 - 70);
       ctx.fillStyle = '#fff';
       ctx.font = '20px Arial';
-      ctx.fillText('Defend your garden from invaders!', this.canvas.width / 2, this.canvas.height / 2 - 20);
+      ctx.fillText('Defend your garden from invaders!', this.canvas.width / 2, this.canvas.height / 2 - 25);
       ctx.font = '16px Arial';
       ctx.fillStyle = '#8BC34A';
-      ctx.fillText('Click to start', this.canvas.width / 2, this.canvas.height / 2 + 30);
+      ctx.fillText('▶ Click to start', this.canvas.width / 2, this.canvas.height / 2 + 20);
       ctx.fillStyle = '#aaa';
       ctx.font = '13px Arial';
-      ctx.fillText('Keys: 1-6 select plants | S shovel | ESC pause', this.canvas.width / 2, this.canvas.height / 2 + 60);
+      ctx.fillText('Keys: 1-6 select plants | S shovel | ESC pause', this.canvas.width / 2, this.canvas.height / 2 + 55);
+      ctx.textBaseline = 'alphabetic';
     }
 
     // Level select screen
@@ -469,9 +575,10 @@ export class GameEngine {
       ctx.fillStyle = '#4CAF50';
       ctx.font = 'bold 32px Arial';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText('SELECT LEVEL', this.canvas.width / 2, 50);
 
-      const bw = 160, bh = 50, gap = 15;
+      const bw = 180, bh = 55, gap = 15;
       const totalH = LEVELS.length * bh + (LEVELS.length - 1) * gap;
       const startY = (this.canvas.height - totalH) / 2;
 
@@ -480,10 +587,16 @@ export class GameEngine {
         const bx = this.canvas.width / 2 - bw / 2;
         const stars = this.saveData.levelStars[i] || 0;
 
+        // Button shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(bx + 3, by + 3, bw, bh);
+
         ctx.fillStyle = '#33691E';
         ctx.fillRect(bx, by, bw, bh);
         ctx.strokeStyle = '#8BC34A';
+        ctx.lineWidth = 2;
         ctx.strokeRect(bx, by, bw, bh);
+        ctx.lineWidth = 1;
 
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 16px Arial';
@@ -497,6 +610,7 @@ export class GameEngine {
         ctx.font = '14px Arial';
         ctx.fillText(starStr, this.canvas.width / 2, by + 42);
       }
+      ctx.textBaseline = 'alphabetic';
     }
 
     // Pause screen
@@ -504,11 +618,14 @@ export class GameEngine {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 36px Arial';
+      ctx.font = 'bold 40px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⏸ PAUSED', this.canvas.width / 2, this.canvas.height / 2 - 10);
       ctx.font = '16px Arial';
-      ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 30);
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 25);
+      ctx.textBaseline = 'alphabetic';
     }
   }
 
@@ -518,8 +635,10 @@ export class GameEngine {
     this.projectiles = [];
     this.selectedPlant = null;
     this.gameState = 'playing';
+    this.lastCountdownSecond = -1;
     this.waveManager.loadLevel(this.waveManager.currentLevel + 1);
     this.energy = this.waveManager.getStartEnergy();
+    this.ui = new UI(this.canvas.width, this.canvas.height);
   }
 
   restart(): void {
@@ -531,8 +650,10 @@ export class GameEngine {
     this.selectedPlant = null;
     this.gameState = 'playing';
     this.score = 0;
+    this.lastCountdownSecond = -1;
     this.waveManager = new WaveManager(LEVELS);
     this.energy = this.waveManager.getStartEnergy();
+    this.ui = new UI(this.canvas.width, this.canvas.height);
   }
 
   private startLevel(level: number): void {
@@ -542,13 +663,16 @@ export class GameEngine {
     this.selectedPlant = null;
     this.gameState = 'playing';
     this.score = 0;
+    this.lastCountdownSecond = -1;
     this.waveManager = new WaveManager(LEVELS);
     this.waveManager.loadLevel(level);
     this.energy = this.waveManager.getStartEnergy();
+    this.ui = new UI(this.canvas.width, this.canvas.height);
+    this.audio.playReady();
   }
 
   private getClickedLevel(x: number, y: number): number {
-    const bw = 160, bh = 50, gap = 15;
+    const bw = 180, bh = 55, gap = 15;
     const totalH = LEVELS.length * bh + (LEVELS.length - 1) * gap;
     const startY = (this.canvas.height - totalH) / 2;
     for (let i = 0; i < LEVELS.length; i++) {
