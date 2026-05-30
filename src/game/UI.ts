@@ -100,18 +100,29 @@ export class UI {
       ctx.font = 'bold 48px Arial';
       ctx.textAlign = 'center';
       const msg = gameState === 'won' ? 'YOU WIN!' : gameState === 'levelComplete' ? 'LEVEL COMPLETE!' : 'GAME OVER';
-      ctx.fillText(msg, ctx.canvas.width / 2, ctx.canvas.height / 2 - 30);
+      ctx.fillText(msg, ctx.canvas.width / 2, ctx.canvas.height / 2 - 40);
+
+      // Stars
+      if (gameState === 'levelComplete' || gameState === 'won') {
+        const stars = 3; // placeholder
+        ctx.font = '30px Arial';
+        let starStr = '';
+        for (let i = 0; i < 3; i++) {
+          starStr += i < stars ? '⭐ ' : '☆ ';
+        }
+        ctx.fillText(starStr, ctx.canvas.width / 2, ctx.canvas.height / 2);
+      }
 
       // Score
       ctx.fillStyle = '#fff';
       ctx.font = '24px Arial';
-      ctx.fillText(`Score: ${score}`, ctx.canvas.width / 2, ctx.canvas.height / 2 + 10);
+      ctx.fillText(`Score: ${score}`, ctx.canvas.width / 2, ctx.canvas.height / 2 + 30);
 
       // Button
       ctx.fillStyle = '#2196F3';
       const bw = 180, bh = 50;
       const bx = ctx.canvas.width / 2 - bw / 2;
-      const by = ctx.canvas.height / 2 + 30;
+      const by = ctx.canvas.height / 2 + 50;
       ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 20px Arial';

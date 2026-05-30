@@ -8,6 +8,7 @@ import { AudioManager } from './AudioManager';
 import { ParticleSystem } from './Particles';
 import { FloatingText } from './FloatingText';
 import { Renderer } from './Renderer';
+import { SaveManager, SaveData } from './SaveManager';
 import { PlantType, LEVELS, PLANT_DATA } from './types';
 
 export class GameEngine {
@@ -20,6 +21,8 @@ export class GameEngine {
   particles: ParticleSystem;
   floatingTexts: FloatingText[] = [];
   time: number = 0;
+  saveData: SaveData;
+  selectedLevel: number = 0;
 
   plants: Plant[] = [];
   enemies: Enemy[] = [];
@@ -47,6 +50,7 @@ export class GameEngine {
     this.audio = new AudioManager();
     this.particles = new ParticleSystem();
     this.time = 0;
+    this.saveData = SaveManager.load() || { levelStars: [0, 0, 0, 0, 0], highScore: 0, unlockedPlants: ['basic_shooter', 'sunflower', 'wall_nut'] };
     this.energy = this.waveManager.getStartEnergy();
     this.setupEvents();
   }
@@ -347,6 +351,13 @@ export class GameEngine {
         this.gameState = 'levelComplete';
         this.audio.playWin();
       }
+      // Save stars based on remaining plants
+      const stars = this.plants.length >= 8 ? 3 : this.plants.length >= 4 ? 2 : 1;
+      this.saveData.levelStars[this.waveManager.currentLevel] = Math.max(
+        this.saveData.levelStars[this.waveManager.currentLevel], stars
+      );
+      this.saveData.highScore = Math.max(this.saveData.highScore, this.score);
+      SaveManager.save(this.saveData);
     }
   }
 
