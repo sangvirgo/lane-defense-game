@@ -67,7 +67,7 @@ export class Enemy {
     this.slowTimer = Math.max(this.slowTimer, duration);
   }
 
-  getCol(cellSize: number): number {
-    return Math.floor(this.x / cellSize);
+  getCol(cellSize: number, offsetX: number): number {
+    return Math.floor((this.x - offsetX) / cellSize);
   }
 }

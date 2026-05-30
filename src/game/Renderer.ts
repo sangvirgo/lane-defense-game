@@ -868,6 +868,50 @@ export class Renderer {
     }
   }
 
+  static drawLawnMower(ctx: CanvasRenderingContext2D, x: number, y: number, active: boolean, time: number): void {
+    // Body
+    ctx.fillStyle = '#66BB6A';
+    ctx.fillRect(x - 16, y - 8, 32, 16);
+    // Roof/engine housing
+    ctx.fillStyle = '#43A047';
+    ctx.fillRect(x - 10, y - 13, 20, 7);
+    // Engine highlight
+    ctx.fillStyle = '#81C784';
+    ctx.fillRect(x - 8, y - 12, 6, 5);
+    // Wheels
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(x - 10, y + 8, 5, 0, Math.PI * 2);
+    ctx.arc(x + 10, y + 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Wheel rims
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.arc(x - 10, y + 8, 2, 0, Math.PI * 2);
+    ctx.arc(x + 10, y + 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Blade guard
+    ctx.fillStyle = '#2E7D32';
+    ctx.fillRect(x + 14, y - 6, 6, 12);
+    // Spinning blade
+    const bladeAngle = active ? time * 20 : time * 0.5;
+    ctx.save();
+    ctx.translate(x + 17, y);
+    ctx.rotate(bladeAngle);
+    ctx.fillStyle = '#9E9E9E';
+    ctx.fillRect(-10, -1.5, 20, 3);
+    ctx.fillRect(-1.5, -10, 3, 20);
+    ctx.restore();
+    // Exhaust
+    if (active) {
+      const puff = Math.sin(time * 8) * 0.3 + 0.5;
+      ctx.fillStyle = `rgba(150,150,150,${puff})`;
+      ctx.beginPath();
+      ctx.arc(x - 18, y - 10, 4 + Math.sin(time * 6) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   static drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number, time: number): void {
     // Blue sky gradient
     const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.35);

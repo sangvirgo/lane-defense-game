@@ -10,6 +10,7 @@ import { FloatingText } from './FloatingText';
 import { Renderer } from './Renderer';
 import { SaveManager, SaveData } from './SaveManager';
 import { PlantType, LEVELS, PLANT_DATA } from './types';
+import { LawnMower } from './LawnMower';
 import * as C from './Constants';
 
 export class GameEngine {
@@ -28,6 +29,7 @@ export class GameEngine {
   plants: Plant[] = [];
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
+  lawnMowers: LawnMower[] = [];
 
   energy: number = 50;
   energyTimer: number = 0;
@@ -307,12 +309,38 @@ export class GameEngine {
     // Update enemies
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
-      enemy.update(dt, this.board.cellSize);
+
+      // Check if enemy is blocked by a plant BEFORE moving
+      const enemyCol = enemy.getCol(this.board.cellSize, this.board.offsetX);
+      let blocked = false;
+      for (const plant of this.plants) {
+        if (plant.pos.row === enemy.row && plant.pos.col === enemyCol) {
+          // Enemy stops and attacks the plant
+          plant.takeDamage(enemy.damage * dt);
+          blocked = true;
+          break;
+        }
+      }
+
+      if (!blocked) {
+        enemy.update(dt, this.board.cellSize);
+      }
 
       if (enemy.x < this.board.offsetX) {
-        this.gameState = 'lost';
-        this.audio.playLose();
-        return;
+        // Try to activate a lawn mower for this row
+        const mower = this.lawnMowers.find(m => m.row === enemy.row && !m.active && !m.consumed);
+        if (mower) {
+          mower.activate();
+          this.audio.playShoot();
+        } else {
+          // No mower available - check if one is already active (coming to save)
+          const activeMower = this.lawnMowers.find(m => m.row === enemy.row && m.active && !m.consumed);
+          if (!activeMower) {
+            this.gameState = 'lost';
+            this.audio.playLose();
+            return;
+          }
+        }
       }
 
       // Healer heals nearby enemies
@@ -324,14 +352,6 @@ export class GameEngine {
             this.particles.emit(other.x, this.board.offsetY + other.row * this.board.cellSize + this.board.cellSize / 2, 5, '#00BCD4');
             break;
           }
-        }
-      }
-
-      const enemyCol = enemy.getCol(this.board.cellSize);
-      for (const plant of this.plants) {
-        if (plant.pos.row === enemy.row && plant.pos.col === enemyCol) {
-          plant.takeDamage(enemy.damage * dt);
-          break;
         }
       }
     }
@@ -369,6 +389,28 @@ export class GameEngine {
     this.enemies = this.enemies.filter(e => e.alive);
     this.projectiles = this.projectiles.filter(p => p.alive);
     this.plants = this.plants.filter(p => !p.isDead());
+
+    // Update lawn mowers
+    for (const mower of this.lawnMowers) {
+      if (!mower.active || mower.consumed) continue;
+      mower.update(dt);
+
+      // Kill enemies in the same row that the mower passes
+      for (const enemy of this.enemies) {
+        if (!enemy.alive || enemy.row !== mower.row) continue;
+        if (Math.abs(enemy.x - mower.x) < C.CELL_SIZE * 0.7) {
+          enemy.takeDamage(enemy.maxHp + 100); // instant kill
+          this.particles.emit(enemy.x, this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2, 15, '#FF5722');
+        }
+      }
+
+      // Mark as consumed when off screen
+      if (mower.isOffScreen(this.canvas.width)) {
+        mower.consumed = true;
+      }
+    }
+    // Remove consumed mowers
+    this.lawnMowers = this.lawnMowers.filter(m => !m.consumed);
 
     // Check wave completion
     if (this.waveManager.isWaveDone() && this.enemies.length === 0) {
@@ -408,6 +450,13 @@ export class GameEngine {
     Renderer.drawBackground(ctx, this.canvas.width, this.canvas.height, this.time);
 
     this.board.render(ctx);
+
+    // Render lawn mowers
+    for (const mower of this.lawnMowers) {
+      if (mower.consumed) continue;
+      const centerY = this.board.offsetY + mower.row * this.board.cellSize + this.board.cellSize / 2;
+      Renderer.drawLawnMower(ctx, mower.active ? mower.x : this.board.offsetX - 25, centerY, mower.active, this.time);
+    }
 
     // Render plants
     for (const plant of this.plants) {
@@ -639,6 +688,10 @@ export class GameEngine {
     this.waveManager.loadLevel(this.waveManager.currentLevel + 1);
     this.energy = this.waveManager.getStartEnergy();
     this.ui = new UI(this.canvas.width, this.canvas.height);
+    this.lawnMowers = [];
+    for (let r = 0; r < C.GRID_ROWS; r++) {
+      this.lawnMowers.push(new LawnMower(r, C.GRID_OFFSET_X - 25));
+    }
   }
 
   restart(): void {
@@ -654,6 +707,10 @@ export class GameEngine {
     this.waveManager = new WaveManager(LEVELS);
     this.energy = this.waveManager.getStartEnergy();
     this.ui = new UI(this.canvas.width, this.canvas.height);
+    this.lawnMowers = [];
+    for (let r = 0; r < C.GRID_ROWS; r++) {
+      this.lawnMowers.push(new LawnMower(r, C.GRID_OFFSET_X - 25));
+    }
   }
 
   private startLevel(level: number): void {
@@ -669,6 +726,10 @@ export class GameEngine {
     this.energy = this.waveManager.getStartEnergy();
     this.ui = new UI(this.canvas.width, this.canvas.height);
     this.audio.playReady();
+    this.lawnMowers = [];
+    for (let r = 0; r < C.GRID_ROWS; r++) {
+      this.lawnMowers.push(new LawnMower(r, C.GRID_OFFSET_X - 25));
+    }
   }
 
   private getClickedLevel(x: number, y: number): number {
