@@ -14,6 +14,53 @@ export class AudioManager {
 
   toggleMute(): void {
     this.muted = !this.muted;
+    if (this.muted && this.musicSource) {
+      this.musicSource.stop();
+      this.musicSource = null;
+    } else if (!this.muted) {
+      this.startMusic();
+    }
+  }
+
+  private musicSource: OscillatorNode | null = null;
+  private musicGain: GainNode | null = null;
+
+  startMusic(): void {
+    if (this.muted) return;
+    try {
+      const ctx = this.ensureCtx();
+      if (this.musicSource) return;
+
+      // Simple ambient music loop using oscillators
+      const now = ctx.currentTime;
+      const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.05, now);
+      gain.connect(ctx.destination);
+      this.musicGain = gain;
+
+      // Pad chord
+      const oscs: OscillatorNode[] = [];
+      for (const freq of notes) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.connect(gain);
+        osc.start(now);
+        oscs.push(osc);
+      }
+      this.musicSource = oscs[0];
+
+      // Slowly modulate volume
+      const modulate = () => {
+        if (!this.musicGain || this.muted) return;
+        const t = ctx.currentTime;
+        this.musicGain.gain.setValueAtTime(0.03 + Math.sin(t * 0.5) * 0.02, t);
+      };
+      setInterval(modulate, 500);
+    } catch (_e) {
+      // ignore
+    }
   }
 
   isMuted(): boolean {
