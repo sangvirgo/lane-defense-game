@@ -31,7 +31,7 @@ export class UI {
     });
   }
 
-  render(ctx: CanvasRenderingContext2D, energy: number, selected: PlantType | null, waveLabel: string, gameState: string, score: number, muted: boolean = false): void {
+  render(ctx: CanvasRenderingContext2D, energy: number, selected: PlantType | null, waveLabel: string, gameState: string, score: number, muted: boolean = false, shovelActive: boolean = false): void {
     // Energy display
     ctx.fillStyle = '#FFD600';
     ctx.font = 'bold 20px Arial';
@@ -77,6 +77,17 @@ export class UI {
     ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(muted ? '🔇' : '🔊', ctx.canvas.width - 40, 25);
+
+    // Shovel indicator
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(shovelActive ? '🔧 DIGGING' : '', 20, 55);
+
+    // Keyboard hints
+    ctx.fillStyle = '#666';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('[1-6] Plants  [S] Shovel  [ESC] Pause', ctx.canvas.width / 2, ctx.canvas.height - 5);
 
     // Tooltip on hover
     this.renderTooltip(ctx);

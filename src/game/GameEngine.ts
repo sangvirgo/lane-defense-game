@@ -33,10 +33,14 @@ export class GameEngine {
 
   private lastTime: number = 0;
   private running: boolean = false;
+  private paused: boolean = false;
+  private shovelActive: boolean = false;
+  private showStartScreen: boolean = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+    this.showStartScreen = true;
     this.board = new Board(5, 9, 60, 0, 50);
     this.ui = new UI(canvas.width, canvas.height);
     this.waveManager = new WaveManager(LEVELS);
@@ -48,10 +52,48 @@ export class GameEngine {
   }
 
   private setupEvents(): void {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (this.showStartScreen) {
+        this.showStartScreen = false;
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (this.shovelActive) {
+          this.shovelActive = false;
+        } else {
+          this.paused = !this.paused;
+        }
+        return;
+      }
+      if (this.paused || this.gameState !== 'playing') return;
+      const plantKeys: Record<string, PlantType> = {
+        '1': PlantType.BasicShooter,
+        '2': PlantType.DoubleShooter,
+        '3': PlantType.Sunflower,
+        '4': PlantType.WallNut,
+        '5': PlantType.FreezePlant,
+        '6': PlantType.BombPlant,
+      };
+      if (plantKeys[e.key]) {
+        this.selectedPlant = plantKeys[e.key];
+        this.shovelActive = false;
+      } else if (e.key === 's' || e.key === 'S') {
+        this.shovelActive = !this.shovelActive;
+        this.selectedPlant = null;
+      }
+    });
+
     this.canvas.addEventListener('click', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
+      // Start screen
+      if (this.showStartScreen) {
+        this.showStartScreen = false;
+        return;
+      }
 
       // Mute toggle
       if (this.ui.isMuteClick(x, y, this.canvas.width)) {
@@ -73,6 +115,20 @@ export class GameEngine {
       const card = this.ui.getClickedCard(x, y);
       if (card !== null) {
         this.selectedPlant = card;
+        this.shovelActive = false;
+        return;
+      }
+
+      // Shovel click
+      if (this.shovelActive) {
+        const cell = this.board.getCellFromPixel(x, y);
+        if (cell) {
+          const idx = this.plants.findIndex(p => p.pos.row === cell.row && p.pos.col === cell.col);
+          if (idx >= 0) {
+            this.plants.splice(idx, 1);
+            this.shovelActive = false;
+          }
+        }
         return;
       }
 
@@ -175,7 +231,7 @@ export class GameEngine {
 
   private update(dt: number): void {
     this.time += dt;
-    if (this.gameState !== 'playing') return;
+    if (this.showStartScreen || this.paused || this.gameState !== 'playing') return;
 
     // Energy regen
     this.energyTimer += dt;
@@ -334,7 +390,38 @@ export class GameEngine {
     this.particles.render(ctx);
 
     // UI
-    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score, this.audio.isMuted());
+    this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score, this.audio.isMuted(), this.shovelActive);
+
+    // Start screen
+    if (this.showStartScreen) {
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🌿 LANE DEFENSE 🌿', this.canvas.width / 2, this.canvas.height / 2 - 60);
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.fillText('Defend your garden from invaders!', this.canvas.width / 2, this.canvas.height / 2 - 20);
+      ctx.font = '16px Arial';
+      ctx.fillStyle = '#8BC34A';
+      ctx.fillText('Click to start', this.canvas.width / 2, this.canvas.height / 2 + 30);
+      ctx.fillStyle = '#aaa';
+      ctx.font = '13px Arial';
+      ctx.fillText('Keys: 1-6 select plants | S shovel | ESC pause', this.canvas.width / 2, this.canvas.height / 2 + 60);
+    }
+
+    // Pause screen
+    if (this.paused) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+      ctx.font = '16px Arial';
+      ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 30);
+    }
   }
 
   nextLevel(): void {
