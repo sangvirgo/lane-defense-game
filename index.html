@@ -4,30 +4,68 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lane Defense Game</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #0a0a1a;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0d1117 100%);
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
     }
     #app {
       text-align: center;
     }
     h1 {
       color: #4CAF50;
-      font-size: 28px;
-      margin: 10px 0;
-      text-shadow: 0 0 10px rgba(76,175,80,0.5);
+      font-size: 32px;
+      margin: 10px 0 5px;
+      text-shadow: 0 0 20px rgba(76,175,80,0.5);
+      letter-spacing: 2px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    canvas {
+      border-radius: 8px;
+      box-shadow: 0 0 30px rgba(76,175,80,0.2), 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .controls {
+      color: #555;
+      font-size: 11px;
+      margin-top: 8px;
+    }
+    .controls kbd {
+      background: #333;
+      color: #8BC34A;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+      border: 1px solid #444;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <h1>🌿 Lane Defense 🌿</h1>
+    <h1>🌿 LANE DEFENSE 🌿</h1>
+    <p class="subtitle">A tower defense game</p>
+    <canvas id="game"></canvas>
+    <div class="controls">
+      <kbd>1</kbd>-<kbd>6</kbd> Select plant &nbsp;|&nbsp;
+      <kbd>S</kbd> Shovel &nbsp;|&nbsp;
+      <kbd>ESC</kbd> Pause &nbsp;|&nbsp;
+      Click plant to upgrade
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
