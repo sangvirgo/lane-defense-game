@@ -426,6 +426,20 @@ export class GameEngine {
     // Particles
     this.particles.render(ctx);
 
+    // Ready message during initial delay
+    if (!this.waveManager.started && this.gameState === 'playing') {
+      const remaining = Math.ceil(this.waveManager.initialDelay);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(this.canvas.width / 2 - 100, this.canvas.height / 2 - 40, 200, 80);
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('GET READY!', this.canvas.width / 2, this.canvas.height / 2 - 5);
+      ctx.fillStyle = '#fff';
+      ctx.font = '18px Arial';
+      ctx.fillText(`${remaining}s`, this.canvas.width / 2, this.canvas.height / 2 + 25);
+    }
+
     // UI
     this.ui.render(ctx, this.energy, this.selectedPlant, this.waveManager.getWaveLabel(), this.gameState, this.score, this.audio.isMuted(), this.shovelActive);
 

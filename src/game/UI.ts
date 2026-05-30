@@ -32,11 +32,24 @@ export class UI {
   }
 
   render(ctx: CanvasRenderingContext2D, energy: number, selected: PlantType | null, waveLabel: string, gameState: string, score: number, muted: boolean = false, shovelActive: boolean = false): void {
-    // Energy display
-    ctx.fillStyle = '#FFD600';
-    ctx.font = 'bold 20px Arial';
+    // Sun counter (PvZ style)
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(8, 8, 90, 36);
+    ctx.fillStyle = '#A0522D';
+    ctx.fillRect(10, 10, 86, 32);
+    // Sun icon
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(30, 26, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFA000';
+    ctx.beginPath();
+    ctx.arc(30, 26, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText(`☀ ${energy}`, 20, 30);
+    ctx.fillText(`${energy}`, 48, 32);
 
     // Score
     ctx.fillStyle = '#fff';
@@ -50,13 +63,22 @@ export class UI {
     ctx.textAlign = 'center';
     ctx.fillText(waveLabel, ctx.canvas.width / 2, 30);
 
+    // Card bar background (PvZ style)
+    const barY = ctx.canvas.height - 75;
+    ctx.fillStyle = '#5C4033';
+    ctx.fillRect(0, barY, ctx.canvas.width, 75);
+    ctx.fillStyle = '#6B4226';
+    ctx.fillRect(0, barY, ctx.canvas.width, 3);
+
     // Plant cards
     for (const card of this.cards) {
       const data = PLANT_DATA[card.type];
       const r = card.rect;
-      ctx.fillStyle = selected === card.type ? '#558B2F' : '#33691E';
+      // Card background
+      ctx.fillStyle = selected === card.type ? '#8BC34A' : '#6B8E23';
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.strokeStyle = energy >= data.cost ? '#8BC34A' : '#666';
+      // Card border
+      ctx.strokeStyle = energy >= data.cost ? '#BDB76B' : '#555';
       ctx.lineWidth = selected === card.type ? 3 : 1;
       ctx.strokeRect(r.x, r.y, r.w, r.h);
       ctx.lineWidth = 1;

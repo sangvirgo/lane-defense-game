@@ -10,6 +10,8 @@ export class WaveManager {
   spawnInterval: number = 0;
   allSpawned: boolean = false;
   levelComplete: boolean = false;
+  initialDelay: number = 5;
+  started: boolean = false;
 
   constructor(levels: LevelData[]) {
     this.levels = levels;
@@ -39,6 +41,8 @@ export class WaveManager {
     const wave = level.waves[index];
     this.spawnInterval = wave.spawnInterval;
     this.spawnTimer = 0;
+    this.started = index > 0;
+    this.initialDelay = index === 0 ? 5 : 0;
     this.spawnQueue = [];
     for (const group of wave.enemies) {
       for (let i = 0; i < group.count; i++) {
@@ -55,6 +59,13 @@ export class WaveManager {
 
   update(dt: number, startX: number): Enemy | null {
     if (this.allSpawned || this.spawnQueue.length === 0) return null;
+    if (!this.started) {
+      this.initialDelay -= dt;
+      if (this.initialDelay <= 0) {
+        this.started = true;
+      }
+      return null;
+    }
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = this.spawnInterval;

@@ -554,32 +554,44 @@ export class Renderer {
     }
   }
 
-  static drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number, time: number): void {
-    // Sky gradient
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.4);
-    skyGrad.addColorStop(0, '#1a1a3e');
-    skyGrad.addColorStop(1, '#2d3a4a');
+  static drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number, _time: number): void {
+    // Blue sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.3);
+    skyGrad.addColorStop(0, '#87CEEB');
+    skyGrad.addColorStop(1, '#B0E0E6');
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, width, height * 0.4);
+    ctx.fillRect(0, 0, width, height * 0.3);
 
-    // Stars
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    for (let i = 0; i < 20; i++) {
-      const sx = (i * 137.5 + time * 2) % width;
-      const sy = (i * 73.7) % (height * 0.35);
-      ctx.beginPath();
-      ctx.arc(sx, sy, 1 + Math.sin(time + i) * 0.5, 0, Math.PI * 2);
-      ctx.fill();
+    // Sun in sky
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(width - 50, 35, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFF8DC';
+    ctx.beginPath();
+    ctx.arc(width - 50, 35, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Grass/lawn base
+    const grassGrad = ctx.createLinearGradient(0, height * 0.3, 0, height);
+    grassGrad.addColorStop(0, '#4CAF50');
+    grassGrad.addColorStop(0.3, '#388E3C');
+    grassGrad.addColorStop(1, '#2E7D32');
+    ctx.fillStyle = grassGrad;
+    ctx.fillRect(0, height * 0.13, width, height * 0.87);
+
+    // Lawn stripes (like PvZ)
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let i = 0; i < 9; i++) {
+      if (i % 2 === 0) {
+        ctx.fillRect(i * (width / 9), height * 0.13, width / 9, height);
+      }
     }
 
-    // Moon
-    ctx.fillStyle = '#FFF9C4';
-    ctx.beginPath();
-    ctx.arc(width - 60, 40, 20, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1a1a3e';
-    ctx.beginPath();
-    ctx.arc(width - 52, 36, 18, 0, Math.PI * 2);
-    ctx.fill();
+    // House wall at top
+    ctx.fillStyle = '#8D6E63';
+    ctx.fillRect(0, 0, width, height * 0.04);
+    ctx.fillStyle = '#6D4C41';
+    ctx.fillRect(0, height * 0.04, width, 2);
   }
 }

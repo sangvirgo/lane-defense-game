@@ -20,12 +20,16 @@ export class Board {
       for (let c = 0; c < this.cols; c++) {
         const x = this.offsetX + c * this.cellSize;
         const y = this.offsetY + r * this.cellSize;
-        ctx.fillStyle = (r + c) % 2 === 0 ? '#2d5a1e' : '#3a6b2a';
+        // PvZ-style alternating lawn tiles
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#5a8f3c' : '#4a7a2e';
         ctx.fillRect(x, y, this.cellSize, this.cellSize);
-        ctx.strokeStyle = '#1a3a10';
+        // Subtle grid lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 0.5;
         ctx.strokeRect(x, y, this.cellSize, this.cellSize);
       }
     }
+    ctx.lineWidth = 1;
   }
 
   getCellFromPixel(px: number, py: number): Position | null {
