@@ -40,6 +40,7 @@ export class GameEngine {
   private paused: boolean = false;
   private shovelActive: boolean = false;
   private showStartScreen: boolean = true;
+  private showLevelSelect: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -97,6 +98,18 @@ export class GameEngine {
       // Start screen
       if (this.showStartScreen) {
         this.showStartScreen = false;
+        this.showLevelSelect = true;
+        return;
+      }
+
+      // Level select
+      if (this.showLevelSelect) {
+        const level = this.getClickedLevel(x, y);
+        if (level >= 0 && level < LEVELS.length) {
+          this.selectedLevel = level;
+          this.showLevelSelect = false;
+          this.startLevel(level);
+        }
         return;
       }
 
@@ -435,6 +448,43 @@ export class GameEngine {
       ctx.fillText('Keys: 1-6 select plants | S shovel | ESC pause', this.canvas.width / 2, this.canvas.height / 2 + 60);
     }
 
+    // Level select screen
+    if (this.showLevelSelect) {
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = 'bold 32px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('SELECT LEVEL', this.canvas.width / 2, 50);
+
+      const bw = 160, bh = 50, gap = 15;
+      const totalH = LEVELS.length * bh + (LEVELS.length - 1) * gap;
+      const startY = (this.canvas.height - totalH) / 2;
+
+      for (let i = 0; i < LEVELS.length; i++) {
+        const by = startY + i * (bh + gap);
+        const bx = this.canvas.width / 2 - bw / 2;
+        const stars = this.saveData.levelStars[i] || 0;
+
+        ctx.fillStyle = '#33691E';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.strokeStyle = '#8BC34A';
+        ctx.strokeRect(bx, by, bw, bh);
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Level ${i + 1}`, this.canvas.width / 2, by + 22);
+
+        let starStr = '';
+        for (let s = 0; s < 3; s++) {
+          starStr += s < stars ? '⭐' : '☆';
+        }
+        ctx.font = '14px Arial';
+        ctx.fillText(starStr, this.canvas.width / 2, by + 42);
+      }
+    }
+
     // Pause screen
     if (this.paused) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -469,5 +519,31 @@ export class GameEngine {
     this.score = 0;
     this.waveManager = new WaveManager(LEVELS);
     this.energy = this.waveManager.getStartEnergy();
+  }
+
+  private startLevel(level: number): void {
+    this.plants = [];
+    this.enemies = [];
+    this.projectiles = [];
+    this.selectedPlant = null;
+    this.gameState = 'playing';
+    this.score = 0;
+    this.waveManager = new WaveManager(LEVELS);
+    this.waveManager.loadLevel(level);
+    this.energy = this.waveManager.getStartEnergy();
+  }
+
+  private getClickedLevel(x: number, y: number): number {
+    const bw = 160, bh = 50, gap = 15;
+    const totalH = LEVELS.length * bh + (LEVELS.length - 1) * gap;
+    const startY = (this.canvas.height - totalH) / 2;
+    for (let i = 0; i < LEVELS.length; i++) {
+      const by = startY + i * (bh + gap);
+      const bx = this.canvas.width / 2 - bw / 2;
+      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
+        return i;
+      }
+    }
+    return -1;
   }
 }
