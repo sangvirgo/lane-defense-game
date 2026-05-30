@@ -309,7 +309,7 @@ export class GameEngine {
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       const ey = this.board.offsetY + enemy.row * this.board.cellSize + this.board.cellSize / 2;
-      Renderer.drawEnemy(ctx, enemy.x, ey, enemy.type, this.time, enemy.slowTimer);
+      Renderer.drawEnemy(ctx, enemy.x, ey, enemy.type, this.time, enemy.slowTimer, enemy.hitFlash, enemy.deathAnim);
 
       // HP bar
       const hpRatio = enemy.hp / enemy.maxHp;

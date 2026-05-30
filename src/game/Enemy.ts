@@ -14,6 +14,8 @@ export class Enemy {
   score: number;
   alive: boolean = true;
   slowTimer: number = 0;
+  hitFlash: number = 0;
+  deathAnim: number = 0;
 
   constructor(row: number, startX: number, type: EnemyType) {
     this.row = row;
@@ -31,6 +33,8 @@ export class Enemy {
   }
 
   update(dt: number, cellSize: number): void {
+    if (this.hitFlash > 0) this.hitFlash -= dt;
+    if (this.deathAnim > 0 && !this.alive) this.deathAnim -= dt;
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       this.speed = this.baseSpeed * 0.5;
@@ -42,8 +46,10 @@ export class Enemy {
 
   takeDamage(amount: number): void {
     this.hp -= amount;
+    this.hitFlash = 0.15;
     if (this.hp <= 0) {
       this.alive = false;
+      this.deathAnim = 0.5;
     }
   }
 

@@ -233,9 +233,20 @@ export class Renderer {
     }
   }
 
-  static drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, type: EnemyType, time: number, slowTimer: number): void {
+  static drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, type: EnemyType, time: number, slowTimer: number, hitFlash: number = 0, deathAnim: number = 0): void {
     const wobble = Math.sin(time * 5) * 2;
     const size = 18;
+
+    // Death animation
+    if (deathAnim > 0) {
+      ctx.globalAlpha = deathAnim * 2;
+    }
+
+    // Hit flash
+    if (hitFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+    }
 
     switch (type) {
       case EnemyType.Basic:
@@ -261,6 +272,16 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(x, y, size + 2, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Hit flash restore
+    if (hitFlash > 0) {
+      ctx.restore();
+    }
+
+    // Death animation restore
+    if (deathAnim > 0) {
+      ctx.globalAlpha = 1;
     }
   }
 
