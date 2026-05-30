@@ -14,7 +14,7 @@ export const CANVAS_HEIGHT = 520;
 // Energy
 export const ENERGY_START = 50;
 export const ENERGY_MAX = 999;
-export const ENERGY_REGEN_RATE = 1; // per second
+export const ENERGY_REGEN_RATE = 3; // per second
 
 // Entities
 export const PROJECTILE_SPEED = 300;

@@ -225,12 +225,12 @@ export class GameEngine {
 
   private getPlantCost(type: PlantType): number {
     const costs: Record<PlantType, number> = {
-      [PlantType.BasicShooter]: 100,
+      [PlantType.BasicShooter]: 75,
       [PlantType.DoubleShooter]: 200,
       [PlantType.Sunflower]: 50,
       [PlantType.WallNut]: 50,
-      [PlantType.FreezePlant]: 175,
-      [PlantType.BombPlant]: 150,
+      [PlantType.FreezePlant]: 150,
+      [PlantType.BombPlant]: 125,
       [PlantType.IceShooter]: 0,
       [PlantType.ShieldWall]: 0,
     };
@@ -287,9 +287,9 @@ export class GameEngine {
       const shouldAct = plant.update(dt);
       if (shouldAct) {
         if (plant.type === PlantType.Sunflower) {
-          this.energy = Math.min(C.ENERGY_MAX, this.energy + 25);
+          this.energy = Math.min(C.ENERGY_MAX, this.energy + 30);
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
-          this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '+25 ☀', '#FFD600'));
+          this.floatingTexts.push(new FloatingText(center.x, center.y - 20, '+30 ☀', '#FFD600'));
         } else {
           const center = this.board.getCellCenter(plant.pos.row, plant.pos.col);
           this.projectiles.push(new Projectile(plant.pos.row, center.x, center.y, C.PROJECTILE_SPEED, plant.damage, plant.type));

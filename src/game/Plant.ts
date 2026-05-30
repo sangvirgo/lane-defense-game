@@ -31,8 +31,8 @@ export class Plant {
   update(dt: number): boolean {
     if (this.type === PlantType.Sunflower) {
       this.sunTimer += dt;
-      if (this.sunTimer >= 10) {
-        this.sunTimer -= 10;
+      if (this.sunTimer >= 5) {
+        this.sunTimer -= 5;
         return true; // produce energy
       }
       return false;

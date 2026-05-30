@@ -60,7 +60,7 @@ export interface LevelData {
 export const PLANT_DATA: Record<PlantType, PlantData> = {
   [PlantType.BasicShooter]: {
     type: PlantType.BasicShooter,
-    cost: 100,
+    cost: 75,
     hp: 100,
     damage: 25,
     fireRate: 1,
@@ -87,7 +87,7 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
     fireRate: 0,
     color: '#FFD600',
     symbol: '🌻',
-    description: 'Produces 25 energy every 10 seconds.',
+    description: 'Produces 30 energy every 5 seconds.',
     special: 'Energy producer',
   },
   [PlantType.WallNut]: {
@@ -103,7 +103,7 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
   },
   [PlantType.FreezePlant]: {
     type: PlantType.FreezePlant,
-    cost: 175,
+    cost: 150,
     hp: 100,
     damage: 20,
     fireRate: 0.8,
@@ -114,7 +114,7 @@ export const PLANT_DATA: Record<PlantType, PlantData> = {
   },
   [PlantType.BombPlant]: {
     type: PlantType.BombPlant,
-    cost: 150,
+    cost: 125,
     hp: 100,
     damage: 100,
     fireRate: 0.5,
@@ -216,7 +216,7 @@ export const ENEMY_DATA: Record<EnemyType, EnemyData> = {
 export const LEVELS: LevelData[] = [
   {
     name: 'Level 1 - The Beginning',
-    startEnergy: 50,
+    startEnergy: 200,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 5, row: -1 }], spawnInterval: 2 },
       { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }], spawnInterval: 1.5 },
@@ -225,7 +225,7 @@ export const LEVELS: LevelData[] = [
   },
   {
     name: 'Level 2 - Speed Challenge',
-    startEnergy: 75,
+    startEnergy: 225,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 6, row: -1 }, { type: EnemyType.Fast, count: 3, row: -1 }], spawnInterval: 1.5 },
       { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }], spawnInterval: 1 },
@@ -234,7 +234,7 @@ export const LEVELS: LevelData[] = [
   },
   {
     name: 'Level 3 - Heavy Armor',
-    startEnergy: 100,
+    startEnergy: 250,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 8, row: -1 }, { type: EnemyType.Tank, count: 2, row: -1 }], spawnInterval: 1.5 },
       { enemies: [{ type: EnemyType.Tank, count: 4, row: -1 }, { type: EnemyType.Shield, count: 3, row: -1 }, { type: EnemyType.Flying, count: 2, row: -1 }], spawnInterval: 1.2 },
@@ -243,7 +243,7 @@ export const LEVELS: LevelData[] = [
   },
   {
     name: 'Level 4 - Mixed Assault',
-    startEnergy: 125,
+    startEnergy: 275,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 10, row: -1 }, { type: EnemyType.Fast, count: 5, row: -1 }, { type: EnemyType.Flying, count: 2, row: -1 }], spawnInterval: 1 },
       { enemies: [{ type: EnemyType.Fast, count: 8, row: -1 }, { type: EnemyType.Tank, count: 3, row: -1 }, { type: EnemyType.Healer, count: 2, row: -1 }], spawnInterval: 0.8 },
@@ -252,7 +252,7 @@ export const LEVELS: LevelData[] = [
   },
   {
     name: 'Level 5 - Boss Battle',
-    startEnergy: 150,
+    startEnergy: 300,
     waves: [
       { enemies: [{ type: EnemyType.Basic, count: 12, row: -1 }, { type: EnemyType.Fast, count: 6, row: -1 }, { type: EnemyType.Flying, count: 4, row: -1 }], spawnInterval: 0.8 },
       { enemies: [{ type: EnemyType.Tank, count: 5, row: -1 }, { type: EnemyType.Shield, count: 4, row: -1 }, { type: EnemyType.Healer, count: 3, row: -1 }], spawnInterval: 0.7 },
